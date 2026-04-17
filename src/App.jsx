@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 const C = {
-  sageDark: "#5A6E58 ",
+  sageDark: "#5A6E58",
   sageLight: "#C8D8CC",
   cream: "#F5F0E8",
   forest: "#2E3832",

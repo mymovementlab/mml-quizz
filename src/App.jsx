@@ -1,7 +1,7 @@
-import { useState } from “react”;
+import { useState } from "react" ;
 
 const C = {
-sageDark:”#5A6E58”, sageLight:”#C8D8CC”, cream:”#F5F0E8”,
+sageDark:”#5A6E58 ”, sageLight:”#C8D8CC”, cream:”#F5F0E8”,
 forest:”#2E3832”, accent:”#8FA68C”, right:”#6A9B7A”, wrong:”#C17A6F”, gold:”#B8A060”,
 };
 

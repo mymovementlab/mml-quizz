@@ -7,6 +7,7 @@ const C = {
 
 const ACCESS_CODE = "mymovementlab2025";
 const FREE_LIMIT = 10;
+const LOGO_URL = "https://raw.githubusercontent.com/mymovementlab/mml-quizz/main/logo.png";
 
 const HISTORY = [
   {id:"h1",type:"mcq",level:"Beginner",topic:"Joseph Pilates",q:"Where was Joseph Pilates born?",options:["Near London, England","Near Düsseldorf, Germany","Near New York, USA","Near Vienna, Austria"],correct:1,explanation:"Joseph Pilates was born near Düsseldorf, Germany in 1883."},
@@ -1388,11 +1389,34 @@ const DIFF_COLORS = { Beginner:C.right, Intermediate:C.gold, Advanced:C.wrong };
 
 function shuffle(arr){ return [...arr].sort(()=>Math.random()-0.5); }
 
-function Header(){
+function Header({onNav,onBuy}){
+  const [open,setOpen]=useState(false);
   return(
-    <div style={{padding:"18px 24px 14px",borderBottom:`1px solid ${C.sageLight}`,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-      <span style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"0.95rem",color:C.sageDark,letterSpacing:"0.04em"}}>My Movement Lab</span>
-      <span style={{fontSize:"0.55rem",letterSpacing:"0.18em",textTransform:"uppercase",color:C.accent,fontFamily:"sans-serif",fontWeight:300}}>Pilates Study Tool</span>
+    <div style={{padding:"14px 24px",borderBottom:`1px solid ${C.sageLight}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative",zIndex:100,background:C.cream}}>
+      <button onClick={()=>{onNav("home");setOpen(false);}} style={{background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:8}}>
+        <img src={LOGO_URL} alt="My Movement Lab" style={{height:36,width:36,objectFit:"contain"}}/>
+        <span style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"0.9rem",color:C.sageDark,letterSpacing:"0.04em"}}>My Movement Lab</span>
+      </button>
+      <div style={{display:"flex",gap:12,alignItems:"center"}}>
+        <button onClick={()=>{onBuy();setOpen(false);}} style={{background:C.sageDark,border:"none",cursor:"pointer",fontFamily:"sans-serif",fontWeight:300,fontSize:"0.56rem",letterSpacing:"0.14em",textTransform:"uppercase",color:C.cream,padding:"7px 14px"}}>
+          Buy Access
+        </button>
+        <button onClick={()=>setOpen(o=>!o)} style={{background:"none",border:"none",cursor:"pointer",padding:"4px"}}>
+          {open
+            ? <span style={{fontSize:"1.1rem",color:C.forest,lineHeight:1}}>✕</span>
+            : <div style={{display:"flex",flexDirection:"column",gap:4}}>{[0,1,2].map(i=><span key={i} style={{display:"block",width:20,height:1.5,background:C.forest}}/>)}</div>
+          }
+        </button>
+      </div>
+      {open&&(
+        <div style={{position:"absolute",top:"100%",right:0,background:C.cream,border:`1px solid ${C.sageLight}`,minWidth:160,zIndex:200}}>
+          {[["Home","home"],["Quiz","quiz"],["About","about"]].map(([label,screen])=>(
+            <button key={screen} onClick={()=>{onNav(screen);setOpen(false);}} style={{display:"block",width:"100%",textAlign:"left",padding:"12px 18px",background:"none",border:"none",borderBottom:`1px solid ${C.sageLight}`,cursor:"pointer",fontFamily:"sans-serif",fontWeight:300,fontSize:"0.66rem",letterSpacing:"0.14em",textTransform:"uppercase",color:C.forest}}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1579,84 +1603,163 @@ function About({onBack}){
   );
 }
 
-function Home({onStart}){
+function Home({onStart,onBuy}){
   const [section,setSection]=useState("history");
   const [diff,setDiff]=useState("All");
+  const [format,setFormat]=useState("All");
   const [histTopic,setHistTopic]=useState("All");
   const [anatTopic,setAnatTopic]=useState("All");
   const [matTheme,setMatTheme]=useState("All");
   const [matLevel,setMatLevel]=useState("All");
-
+  const [showFilters,setShowFilters]=useState(false);
+ 
+  // localStorage — load recent sessions
+  const [recentSessions,setRecentSessions]=useState(()=>{
+    try{ return JSON.parse(localStorage.getItem("mml_sessions")||"[]"); }
+    catch{ return []; }
+  });
+ 
+  const QUOTES=[
+    "Physical fitness is the first requisite of happiness.",
+    "Change happens through movement and movement heals.",
+    "In 10 sessions you will feel the difference. In 20 you will see the difference.",
+    "Every moment of our life can be the beginning of great things.",
+  ];
+  const quote=QUOTES[new Date().getDay()%QUOTES.length];
+ 
   function getPool(){
+    let p;
     if(section==="history"){
-      let p=histTopic==="All"?HISTORY:HISTORY.filter(q=>q.topic===histTopic);
-      return diff==="All"?p:p.filter(q=>q.level===diff);
+      p=histTopic==="All"?HISTORY:HISTORY.filter(q=>q.topic===histTopic);
+      if(diff!=="All")p=p.filter(q=>q.level===diff);
+    } else if(section==="anatomy"){
+      p=anatTopic==="All"?ANATOMY:ANATOMY.filter(q=>q.topic===anatTopic);
+      if(diff!=="All")p=p.filter(q=>q.level===diff);
+    } else {
+      p=MAT.filter(q=>{
+        const tm=matTheme==="All"||q.theme===matTheme;
+        const lm=matLevel==="All"||q.level===matLevel;
+        return tm&&lm;
+      });
     }
-    if(section==="anatomy"){
-      let p=anatTopic==="All"?ANATOMY:ANATOMY.filter(q=>q.topic===anatTopic);
-      return diff==="All"?p:p.filter(q=>q.level===diff);
-    }
-    return MAT.filter(q=>{
-      const tm=matTheme==="All"||q.theme===matTheme;
-      const lm=matLevel==="All"||q.level===matLevel;
-      return tm&&lm;
-    });
+    const ft=FORMAT_MAP[format];
+    if(ft)p=p.filter(q=>q.type===ft);
+    return p;
   }
   const pool=getPool();
-
+ 
+  const totalQ=HISTORY.length+ANATOMY.length+MAT.length;
+  const totalDone=recentSessions.reduce((a,s)=>a+s.total,0);
+  const bestScore=recentSessions.length?Math.max(...recentSessions.map(s=>Math.round(s.score/s.total*100))):null;
+ 
   return(
-    <div style={{maxWidth:600,margin:"0 auto",padding:"40px 22px 40px"}}>
-      <p style={{fontSize:"0.58rem",letterSpacing:"0.18em",textTransform:"uppercase",color:C.accent,fontFamily:"sans-serif",fontWeight:300}}>Pilates Study Tool</p>
-      <h1 style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontWeight:300,fontSize:"clamp(1.8rem,5vw,2.8rem)",lineHeight:1.1,color:C.forest,margin:"10px 0 12px"}}>Study smarter,<br/><span style={{color:C.sageDark}}>teach better.</span></h1>
-      <p style={{fontSize:"0.74rem",lineHeight:1.9,color:C.sageDark,maxWidth:400,marginBottom:32,fontFamily:"sans-serif",fontWeight:300}}>Because knowing <em>how</em> makes you a better teacher — wherever you are in your journey.</p>
-      <SLabel>Choose a section</SLabel>
-      <div style={{display:"flex",flexDirection:"column",gap:9,marginBottom:24}}>
-        {Object.entries(SECTIONS).map(([key,cfg])=>(
-          <button key={key} onClick={()=>setSection(key)} style={{border:`1px solid ${section===key?cfg.color:C.sageLight}`,background:section===key?"rgba(90,110,88,0.05)":"transparent",padding:"13px 16px",textAlign:"left",cursor:"pointer",transition:"all 0.18s"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"0.93rem",color:section===key?cfg.color:C.forest}}>{cfg.emoji} {cfg.label}</span>
-              <span style={{fontSize:"0.56rem",letterSpacing:"0.12em",textTransform:"uppercase",color:C.accent,fontFamily:"sans-serif",fontWeight:300}}>{key==="history"?HISTORY.length:key==="anatomy"?ANATOMY.length:MAT.length} questions</span>
-            </div>
-            <p style={{fontSize:"0.62rem",color:C.accent,fontFamily:"sans-serif",fontWeight:300,marginTop:3,letterSpacing:"0.05em"}}>{cfg.desc}</p>
-          </button>
-        ))}
+    <div style={{maxWidth:600,margin:"0 auto"}}>
+ 
+      {/* ── HERO ── */}
+      <div style={{padding:"48px 24px 36px",textAlign:"center",borderBottom:`1px solid ${C.sageLight}`}}>
+        <img src={LOGO_URL} alt="My Movement Lab" style={{width:88,height:88,objectFit:"contain",marginBottom:20,opacity:0.92}}/>
+        <h1 style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontWeight:300,fontSize:"clamp(1.6rem,5vw,2.6rem)",lineHeight:1.15,color:C.forest,margin:"0 0 14px"}}>
+          Study smarter,<br/><span style={{color:C.sageDark}}>teach better.</span>
+        </h1>
+        <p style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"0.88rem",color:C.accent,lineHeight:1.7,maxWidth:340,margin:"0 auto 24px",opacity:0.85}}>
+          "{quote}"
+        </p>
+        <p style={{fontFamily:"sans-serif",fontWeight:300,fontSize:"0.7rem",letterSpacing:"0.06em",color:C.sageDark,lineHeight:1.8}}>
+          {totalQ}+ questions · History · Anatomy · Mat Exercises
+        </p>
       </div>
-      {section==="history"&&<>
-        <SLabel>Topic</SLabel>
-        <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
-          {HISTORY_TOPICS.map(t=><Pill key={t} label={t} active={histTopic===t} color={t==="All"?C.forest:C.gold} onClick={()=>setHistTopic(t)}/>)}
+ 
+      {/* ── PROGRESS STRIP (if sessions exist) ── */}
+      {recentSessions.length>0&&(
+        <div style={{padding:"16px 24px",background:"rgba(90,110,88,0.04)",borderBottom:`1px solid ${C.sageLight}`,display:"flex",gap:24,flexWrap:"wrap"}}>
+          <div>
+            <p style={{fontSize:"0.52rem",letterSpacing:"0.16em",textTransform:"uppercase",color:C.accent,fontFamily:"sans-serif",fontWeight:300,marginBottom:3}}>Sessions</p>
+            <p style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"1.3rem",color:C.sageDark,lineHeight:1}}>{recentSessions.length}</p>
+          </div>
+          <div>
+            <p style={{fontSize:"0.52rem",letterSpacing:"0.16em",textTransform:"uppercase",color:C.accent,fontFamily:"sans-serif",fontWeight:300,marginBottom:3}}>Questions done</p>
+            <p style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"1.3rem",color:C.sageDark,lineHeight:1}}>{totalDone}</p>
+          </div>
+          {bestScore!==null&&(
+            <div>
+              <p style={{fontSize:"0.52rem",letterSpacing:"0.16em",textTransform:"uppercase",color:C.accent,fontFamily:"sans-serif",fontWeight:300,marginBottom:3}}>Best score</p>
+              <p style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"1.3rem",color:C.sageDark,lineHeight:1}}>{bestScore}%</p>
+            </div>
+          )}
+          {recentSessions[0]&&(
+            <div>
+              <p style={{fontSize:"0.52rem",letterSpacing:"0.16em",textTransform:"uppercase",color:C.accent,fontFamily:"sans-serif",fontWeight:300,marginBottom:3}}>Last studied</p>
+              <p style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"1.3rem",color:C.sageDark,lineHeight:1,textTransform:"capitalize"}}>{recentSessions[0].section}</p>
+            </div>
+          )}
         </div>
-        <SLabel>Difficulty</SLabel>
-        <div style={{display:"flex",gap:7,marginBottom:32,flexWrap:"wrap"}}>
-          {DIFF_LEVELS.map(d=><Pill key={d} label={d} active={diff===d} color={d==="All"?C.forest:DIFF_COLORS[d]} onClick={()=>setDiff(d)}/>)}
+      )}
+ 
+      {/* ── QUICK START ── */}
+      <div style={{padding:"28px 24px 0"}}>
+        <p style={{fontSize:"0.56rem",letterSpacing:"0.18em",textTransform:"uppercase",color:C.accent,fontFamily:"sans-serif",fontWeight:300,marginBottom:14}}>Choose a section</p>
+        <div style={{display:"flex",flexDirection:"column",gap:9,marginBottom:20}}>
+          {Object.entries(SECTIONS).map(([key,cfg])=>(
+            <button key={key} onClick={()=>setSection(key)} style={{border:`1px solid ${section===key?cfg.color:C.sageLight}`,background:section===key?"rgba(90,110,88,0.05)":"transparent",padding:"13px 16px",textAlign:"left",cursor:"pointer",transition:"all 0.18s"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"0.93rem",color:section===key?cfg.color:C.forest}}>{cfg.emoji} {cfg.label}</span>
+                <span style={{fontSize:"0.56rem",letterSpacing:"0.12em",textTransform:"uppercase",color:C.accent,fontFamily:"sans-serif",fontWeight:300}}>{key==="history"?HISTORY.length:key==="anatomy"?ANATOMY.length:MAT.length} q</span>
+              </div>
+              <p style={{fontSize:"0.62rem",color:C.accent,fontFamily:"sans-serif",fontWeight:300,marginTop:3,letterSpacing:"0.05em"}}>{cfg.desc}</p>
+            </button>
+          ))}
         </div>
-      </>}
-      {section==="anatomy"&&<>
-        <SLabel>Topic</SLabel>
-        <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
-          {ANATOMY_TOPICS.map(t=><Pill key={t} label={t} active={anatTopic===t} color={t==="All"?C.forest:C.sageDark} onClick={()=>setAnatTopic(t)}/>)}
+ 
+        {/* ── FILTERS TOGGLE ── */}
+        <button onClick={()=>setShowFilters(f=>!f)} style={{background:"none",border:`1px solid ${C.sageLight}`,cursor:"pointer",fontFamily:"sans-serif",fontWeight:300,fontSize:"0.6rem",letterSpacing:"0.14em",textTransform:"uppercase",color:C.accent,padding:"8px 16px",marginBottom:showFilters?16:24,display:"flex",alignItems:"center",gap:8}}>
+          <span>{showFilters?"Hide filters ▲":"Filters & format ▼"}</span>
+        </button>
+ 
+        {showFilters&&<>
+          {section==="history"&&<>
+            <SLabel>Topic</SLabel>
+            <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
+              {HISTORY_TOPICS.map(t=><Pill key={t} label={t} active={histTopic===t} color={t==="All"?C.forest:C.gold} onClick={()=>setHistTopic(t)}/>)}
+            </div>
+            <SLabel>Difficulty</SLabel>
+            <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
+              {DIFF_LEVELS.map(d=><Pill key={d} label={d} active={diff===d} color={d==="All"?C.forest:DIFF_COLORS[d]} onClick={()=>setDiff(d)}/>)}
+            </div>
+          </>}
+          {section==="anatomy"&&<>
+            <SLabel>Topic</SLabel>
+            <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
+              {ANATOMY_TOPICS.map(t=><Pill key={t} label={t} active={anatTopic===t} color={t==="All"?C.forest:C.sageDark} onClick={()=>setAnatTopic(t)}/>)}
+            </div>
+            <SLabel>Difficulty</SLabel>
+            <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
+              {DIFF_LEVELS.map(d=><Pill key={d} label={d} active={diff===d} color={d==="All"?C.forest:DIFF_COLORS[d]} onClick={()=>setDiff(d)}/>)}
+            </div>
+          </>}
+          {section==="mat"&&<>
+            <SLabel>Theme</SLabel>
+            <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
+              {MAT_THEMES.map(t=><Pill key={t} label={t} active={matTheme===t} color={C.accent} onClick={()=>setMatTheme(t)}/>)}
+            </div>
+            <SLabel>Exercise level</SLabel>
+            <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
+              {MAT_LEVELS.map(l=><Pill key={l} label={l} active={matLevel===l} color={l==="All"?C.forest:DIFF_COLORS[l]} onClick={()=>setMatLevel(l)}/>)}
+            </div>
+          </>}
+          <SLabel>Format</SLabel>
+          <div style={{display:"flex",gap:7,marginBottom:24,flexWrap:"wrap"}}>
+            {FORMAT_TYPES.map(f=><Pill key={f} label={f} active={format===f} color={C.forest} onClick={()=>setFormat(f)}/>)}
+          </div>
+        </>}
+ 
+        {/* ── CTA ── */}
+        <div style={{paddingBottom:40,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+          <Btn onClick={()=>onStart({section,diff,format,histTopic,anatTopic,matTheme,matLevel,pool:shuffle(pool)})} disabled={pool.length===0}>
+            Begin {pool.length} question{pool.length!==1?"s":""} →
+          </Btn>
+          {pool.length===0&&<span style={{fontSize:"0.62rem",color:C.wrong,fontFamily:"sans-serif",fontWeight:300}}>No questions match</span>}
+          <span onClick={onBuy} style={{fontSize:"0.6rem",color:C.accent,fontFamily:"sans-serif",fontWeight:300,cursor:"pointer",textDecoration:"underline"}}>First 10 free · Unlock all →</span>
         </div>
-        <SLabel>Difficulty</SLabel>
-        <div style={{display:"flex",gap:7,marginBottom:32,flexWrap:"wrap"}}>
-          {DIFF_LEVELS.map(d=><Pill key={d} label={d} active={diff===d} color={d==="All"?C.forest:DIFF_COLORS[d]} onClick={()=>setDiff(d)}/>)}
-        </div>
-      </>}
-      {section==="mat"&&<>
-        <SLabel>Theme</SLabel>
-        <div style={{display:"flex",gap:7,marginBottom:18,flexWrap:"wrap"}}>
-          {MAT_THEMES.map(t=><Pill key={t} label={t} active={matTheme===t} color={C.accent} onClick={()=>setMatTheme(t)}/>)}
-        </div>
-        <SLabel>Exercise level</SLabel>
-        <div style={{display:"flex",gap:7,marginBottom:32,flexWrap:"wrap"}}>
-          {MAT_LEVELS.map(l=><Pill key={l} label={l} active={matLevel===l} color={l==="All"?C.forest:DIFF_COLORS[l]} onClick={()=>setMatLevel(l)}/>)}
-        </div>
-      </>}
-      <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
-        <Btn onClick={()=>onStart({section,diff,histTopic,anatTopic,matTheme,matLevel,pool:shuffle(pool)})} disabled={pool.length===0}>
-          Begin {pool.length} question{pool.length!==1?"s":""} →
-        </Btn>
-        {pool.length===0&&<span style={{fontSize:"0.62rem",color:C.wrong,fontFamily:"sans-serif",fontWeight:300}}>No questions match</span>}
-        <span style={{fontSize:"0.6rem",color:C.accent,fontFamily:"sans-serif",fontWeight:300}}>First 10 free</span>
       </div>
     </div>
   );
@@ -1732,23 +1835,235 @@ function Quiz({questions,config,onDone,onPaywall,unlocked}){
   );
 }
 
-function Results({score,total,section,onRetry,onHome}){
-  const pct=score/total;
+function Results({score,total,section,config,wrongTopics,onRetry,onHome}){
+  const pct=Math.round(score/total*100);
   const cfg=SECTIONS[section];
-  const msg=pct===1?"Perfect score. You know this inside out.":pct>=0.8?"Really strong. Almost there.":pct>=0.6?"Good foundation. Focus on what you missed.":"Keep going — every attempt builds your understanding.";
+  const msg=pct===100?"Perfect. You know this inside out.":pct>=80?"Really strong. Almost there.":pct>=60?"Good foundation. Keep going.":"Keep coming back — every session builds you up.";
+ 
+  // Save to localStorage
+  useState(()=>{
+    try{
+      const sessions=JSON.parse(localStorage.getItem("mml_sessions")||"[]");
+      sessions.unshift({section,score,total,pct,date:new Date().toLocaleDateString("fr-FR"),topics:wrongTopics});
+      localStorage.setItem("mml_sessions",JSON.stringify(sessions.slice(0,20)));
+    }catch(e){}
+  });
+ 
+  // Generate PDF
+  function downloadPDF(){
+    try{
+      const {jsPDF}=window.jspdf;
+      const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+      const W=210; const margin=20;
+ 
+      // Colors
+      const forest=[46,56,50];
+      const sage=[90,110,88];
+      const cream=[245,240,232];
+      const light=[200,216,204];
+ 
+      // Background
+      doc.setFillColor(...cream);
+      doc.rect(0,0,W,297,"F");
+ 
+      // Header band
+      doc.setFillColor(...forest);
+      doc.rect(0,0,W,28,"F");
+ 
+      // Logo area — text version since we can't embed image easily
+      doc.setTextColor(245,240,232);
+      doc.setFont("helvetica","italic");
+      doc.setFontSize(16);
+      doc.text("My Movement Lab",W/2,12,{align:"center"});
+      doc.setFont("helvetica","normal");
+      doc.setFontSize(7);
+      doc.setTextColor(200,216,204);
+      doc.text("Pilates Study Tool",W/2,19,{align:"center"});
+      doc.text(`Session · ${new Date().toLocaleDateString("fr-FR")}`,W/2,24,{align:"center"});
+ 
+      let y=38;
+ 
+      // Score block
+      doc.setFillColor(255,255,255);
+      doc.roundedRect(margin,y,W-margin*2,28,3,3,"F");
+      doc.setTextColor(...forest);
+      doc.setFont("helvetica","bold");
+      doc.setFontSize(28);
+      doc.text(`${score}/${total}`,W/2,y+16,{align:"center"});
+      doc.setFont("helvetica","normal");
+      doc.setFontSize(8);
+      doc.setTextColor(...sage);
+      doc.text(`${pct}% · ${cfg.label}`,W/2,y+23,{align:"center"});
+      y+=36;
+ 
+      // Session details
+      doc.setFontSize(7);
+      doc.setTextColor(...sage);
+      const details=[];
+      if(config.diff&&config.diff!=="All")details.push(`Level: ${config.diff}`);
+      if(config.format&&config.format!=="All")details.push(`Format: ${config.format}`);
+      if(config.histTopic&&config.histTopic!=="All")details.push(`Topic: ${config.histTopic}`);
+      if(config.anatTopic&&config.anatTopic!=="All")details.push(`Topic: ${config.anatTopic}`);
+      if(config.matTheme&&config.matTheme!=="All")details.push(`Theme: ${config.matTheme}`);
+      if(details.length)doc.text(details.join(" · "),W/2,y,{align:"center"});
+      y+=10;
+ 
+      // Divider
+      doc.setDrawColor(...light);
+      doc.setLineWidth(0.3);
+      doc.line(margin,y,W-margin,y);
+      y+=8;
+ 
+      // Topic breakdown
+      if(wrongTopics&&wrongTopics.length>0){
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(8);
+        doc.setTextColor(...forest);
+        doc.text("Breakdown",margin,y);
+        y+=7;
+ 
+        const allTopics=[...new Set([...Object.keys(wrongTopics.correct||{})])];
+        const correct=wrongTopics.correct||{};
+        const wrong=wrongTopics.wrong||{};
+        const allT=[...new Set([...Object.keys(correct),...Object.keys(wrong)])];
+ 
+        allT.forEach(topic=>{
+          const c=correct[topic]||0;
+          const w=wrong[topic]||0;
+          const t=c+w;
+          const p=Math.round(c/t*100);
+          const status=p>=80?"✦ Mastered":p>=50?"◎ In progress":"○ Revise";
+          const statusColor=p>=80?[106,155,122]:p>=50?[184,160,96]:[193,122,111];
+ 
+          doc.setFillColor(255,255,255);
+          doc.roundedRect(margin,y-4,W-margin*2,10,2,2,"F");
+ 
+          doc.setFont("helvetica","normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(...forest);
+          doc.text(topic,margin+3,y+2);
+ 
+          doc.setTextColor(...sage);
+          doc.text(`${c}/${t}`,W/2,y+2,{align:"center"});
+ 
+          doc.setTextColor(...statusColor);
+          doc.setFont("helvetica","bold");
+          doc.text(status,W-margin-3,y+2,{align:"right"});
+          y+=12;
+          if(y>240){doc.addPage();doc.setFillColor(...cream);doc.rect(0,0,W,297,"F");y=20;}
+        });
+        y+=4;
+      }
+ 
+      // Divider
+      doc.setDrawColor(...light);
+      doc.line(margin,y,W-margin,y);
+      y+=10;
+ 
+      // To revise section
+      const toRevise=wrongTopics&&wrongTopics.wrong?Object.keys(wrongTopics.wrong).filter(t=>{
+        const c=wrongTopics.correct&&wrongTopics.correct[t]||0;
+        const w=wrongTopics.wrong[t]||0;
+        return Math.round(c/(c+w)*100)<60;
+      }):[];
+ 
+      if(toRevise.length>0){
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(8);
+        doc.setTextColor(...forest);
+        doc.text("Focus on",margin,y);
+        y+=7;
+ 
+        doc.setFillColor(252,245,235);
+        doc.roundedRect(margin,y-3,W-margin*2,toRevise.length*9+6,3,3,"F");
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(...sage);
+        toRevise.forEach(t=>{
+          doc.text(`→  ${t}`,margin+5,y+3);
+          y+=9;
+        });
+        y+=6;
+      }
+ 
+      // Message
+      doc.setFillColor(...forest);
+      doc.roundedRect(margin,y,W-margin*2,16,3,3,"F");
+      doc.setFont("helvetica","italic");
+      doc.setFontSize(8);
+      doc.setTextColor(245,240,232);
+      doc.text(msg,W/2,y+10,{align:"center",maxWidth:W-margin*2-10});
+      y+=24;
+ 
+      // Footer
+      doc.setFont("helvetica","normal");
+      doc.setFontSize(6);
+      doc.setTextColor(...light);
+      doc.text("My Movement Lab · Independent study resource · Not affiliated with any certification body",W/2,285,{align:"center"});
+ 
+      doc.save(`MML_Session_${new Date().toLocaleDateString("fr-FR").replace(/\//g,"-")}.pdf`);
+    }catch(e){
+      alert("PDF generation requires jsPDF. Make sure it is loaded in index.html.");
+    }
+  }
+ 
   return(
     <div style={{maxWidth:480,margin:"0 auto",padding:"52px 22px 40px"}}>
       <span style={{fontSize:"0.56rem",letterSpacing:"0.16em",textTransform:"uppercase",color:cfg.color,fontFamily:"sans-serif",fontWeight:300}}>{cfg.label} · Complete</span>
       <div style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"clamp(2.8rem,9vw,4.8rem)",lineHeight:1,color:cfg.color,margin:"10px 0 5px"}}>{score}/{total}</div>
-      <p style={{fontSize:"0.64rem",letterSpacing:"0.1em",color:C.forest,fontFamily:"sans-serif",fontWeight:300,marginBottom:26}}>correct answers</p>
-      <p style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"1.1rem",color:C.forest,lineHeight:1.55,marginBottom:36,maxWidth:300}}>{msg}</p>
+      <p style={{fontSize:"0.64rem",letterSpacing:"0.1em",color:C.forest,fontFamily:"sans-serif",fontWeight:300,marginBottom:6}}>{pct}% correct</p>
+      <p style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"1.05rem",color:C.forest,lineHeight:1.55,marginBottom:20,maxWidth:300}}>{msg}</p>
+ 
+      {/* Topic summary */}
+      {wrongTopics&&Object.keys({...wrongTopics.correct,...wrongTopics.wrong}).length>0&&(
+        <div style={{marginBottom:24}}>
+          {[...new Set([...Object.keys(wrongTopics.correct||{}),...Object.keys(wrongTopics.wrong||{})])].map(topic=>{
+            const c=wrongTopics.correct&&wrongTopics.correct[topic]||0;
+            const w=wrongTopics.wrong&&wrongTopics.wrong[topic]||0;
+            const t=c+w;
+            const p=Math.round(c/t*100);
+            const status=p>=80?"✦":p>=50?"◎":"○";
+            const col=p>=80?C.right:p>=50?C.gold:C.wrong;
+            return(
+              <div key={topic} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${C.sageLight}`}}>
+                <span style={{fontFamily:"sans-serif",fontWeight:300,fontSize:"0.72rem",color:C.forest}}>{topic}</span>
+                <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                  <span style={{fontFamily:"sans-serif",fontWeight:300,fontSize:"0.68rem",color:C.accent}}>{c}/{t}</span>
+                  <span style={{color:col,fontSize:"0.85rem"}}>{status}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+ 
+      {/* To revise */}
+      {wrongTopics&&wrongTopics.wrong&&Object.keys(wrongTopics.wrong).filter(t=>{
+        const c=wrongTopics.correct&&wrongTopics.correct[t]||0;
+        const w=wrongTopics.wrong[t]||0;
+        return Math.round(c/(c+w)*100)<60;
+      }).length>0&&(
+        <div style={{padding:"12px 14px",border:`1px solid ${C.wrong}`,background:"rgba(193,122,111,0.05)",marginBottom:24}}>
+          <p style={{fontSize:"0.56rem",letterSpacing:"0.14em",textTransform:"uppercase",color:C.wrong,fontFamily:"sans-serif",fontWeight:300,marginBottom:8}}>Focus on</p>
+          {Object.keys(wrongTopics.wrong).filter(t=>{
+            const c=wrongTopics.correct&&wrongTopics.correct[t]||0;
+            const w=wrongTopics.wrong[t]||0;
+            return Math.round(c/(c+w)*100)<60;
+          }).map(t=>(
+            <p key={t} style={{fontSize:"0.72rem",color:C.forest,fontFamily:"sans-serif",fontWeight:300,padding:"2px 0"}}>→ {t}</p>
+          ))}
+        </div>
+      )}
+ 
       <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
         <Btn onClick={onRetry}>Retry</Btn>
-        <Btn onClick={onHome} variant="ghost">Choose another section</Btn>
+        <Btn onClick={onHome} variant="ghost">Home</Btn>
+        <Btn onClick={downloadPDF} variant="ghost">Download PDF ↓</Btn>
       </div>
     </div>
   );
 }
+ 
 
 export default function App(){
   const [screen,setScreen]=useState("home");
@@ -1756,29 +2071,36 @@ export default function App(){
   const [config,setConfig]=useState({});
   const [finalScore,setFinalScore]=useState(0);
   const [finalTotal,setFinalTotal]=useState(0);
+  const [finalWrongTopics,setFinalWrongTopics]=useState({correct:{},wrong:{}});
   const [unlocked,setUnlocked]=useState(false);
   const [showPaywall,setShowPaywall]=useState(false);
-
+ 
   function startQuiz(cfg){
     setQuestions(cfg.pool);
     setConfig(cfg);
     setShowPaywall(false);
     setScreen("quiz");
   }
-
+ 
+  function handleNav(dest){
+    if(dest==="quiz"){setScreen("home");setShowPaywall(false);}
+    else{setScreen(dest);setShowPaywall(false);}
+  }
+ 
+  function openBuy(){setShowPaywall(true);setScreen("home");}
+ 
   return(
     <div style={{minHeight:"100vh",background:C.cream,display:"flex",flexDirection:"column"}}>
-      <Header/>
+      <Header onNav={handleNav} onBuy={openBuy}/>
       <div style={{flex:1}}>
-        {screen==="home"&&!showPaywall&&<Home onStart={startQuiz}/>}
-        {screen==="quiz"&&!showPaywall&&<Quiz questions={questions} config={config} unlocked={unlocked} onPaywall={()=>setShowPaywall(true)} onDone={(s,t)=>{setFinalScore(s);setFinalTotal(t);setScreen("results");}}/>}
+        {screen==="home"&&!showPaywall&&<Home onStart={startQuiz} onBuy={openBuy}/>}
+        {screen==="quiz"&&!showPaywall&&<Quiz questions={questions} config={config} unlocked={unlocked} onPaywall={()=>setShowPaywall(true)} onDone={(s,t,wt)=>{setFinalScore(s);setFinalTotal(t);setFinalWrongTopics(wt||{correct:{},wrong:{}});setScreen("results");}}/>}
         {showPaywall&&<Paywall onUnlock={()=>{setUnlocked(true);setShowPaywall(false);}}/>}
-        {screen==="results"&&!showPaywall&&<Results score={finalScore} total={finalTotal} section={config.section} onRetry={()=>startQuiz(config)} onHome={()=>setScreen("home")}/>}
+        {screen==="results"&&!showPaywall&&<Results score={finalScore} total={finalTotal} section={config.section} config={config} wrongTopics={finalWrongTopics} onRetry={()=>startQuiz(config)} onHome={()=>setScreen("home")}/>}
         {screen==="about"&&<About onBack={()=>setScreen("home")}/>}
       </div>
-      <div style={{padding:"12px 24px",borderTop:`1px solid ${C.sageLight}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"0.78rem",color:C.accent}}>My Movement Lab</span>
-        <button onClick={()=>setScreen("about")} style={{background:"none",border:"none",cursor:"pointer",fontFamily:"sans-serif",fontWeight:300,fontSize:"0.58rem",letterSpacing:"0.14em",textTransform:"uppercase",color:C.accent,padding:0}}>About</button>
+      <div style={{padding:"10px 24px",borderTop:`1px solid ${C.sageLight}`,textAlign:"center"}}>
+        <span style={{fontSize:"0.54rem",letterSpacing:"0.1em",color:C.sageLight,fontFamily:"sans-serif"}}>Independent study resource · Not affiliated with any certification body</span>
       </div>
     </div>
   );

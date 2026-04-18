@@ -1400,7 +1400,7 @@ function Header({onNav,onBuy}){
       </button>
       <div style={{display:"flex",gap:12,alignItems:"center"}}>
         <button onClick={()=>{onBuy();setOpen(false);}} style={{background:C.sageDark,border:"none",cursor:"pointer",fontFamily:"sans-serif",fontWeight:300,fontSize:"0.56rem",letterSpacing:"0.14em",textTransform:"uppercase",color:C.cream,padding:"7px 14px"}}>
-          Buy Access
+          Get Full Access
         </button>
         <button onClick={()=>setOpen(o=>!o)} style={{background:"none",border:"none",cursor:"pointer",padding:"4px"}}>
           {open
@@ -1621,10 +1621,16 @@ function Home({onStart,onBuy}){
   });
  
   const QUOTES=[
-    "Physical fitness is the first requisite of happiness.",
-    "Change happens through movement and movement heals.",
-    "In 10 sessions you will feel the difference. In 20 you will see the difference.",
+    "Train smarter, move better, feel everything.",
+    "Control first. Power later.",
+    "The goal is not perfection. It’s awareness.",
     "Every moment of our life can be the beginning of great things.",
+    "Control creates confidence.",
+    "Every rep is a chance to improve.",
+    "Every movement teaches you something.",
+    "Progress starts with understanding.",
+    "Master the basics. Unlock everything.",
+    "The more you understand, the stronger you become.",    
   ];
   const quote=QUOTES[new Date().getDay()%QUOTES.length];
  

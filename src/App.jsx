@@ -1385,6 +1385,8 @@ const MAT_THEMES = ["All","Setup","Breathing","Cues","Muscles","Modifications"];
 const MAT_LEVELS = ["All","Beginner","Intermediate","Advanced"];
 const DIFF_LEVELS = ["All","Beginner","Intermediate","Advanced"];
 const DIFF_COLORS = { Beginner:C.right, Intermediate:C.gold, Advanced:C.wrong };
+const FORMAT_TYPES = ["All","MCQ","True / False","Fill in the Blank","Flashcard","Sequencing","Error Detection","Scenario","Cue Selection"];
+const FORMAT_MAP = {"All":null,"MCQ":"mcq","True / False":"tf","Fill in the Blank":"fill","Flashcard":"flashcard","Sequencing":"sequence","Error Detection":"error","Scenario":"scenario","Cue Selection":"cue_selection"};
 
 function shuffle(arr){ return [...arr].sort(()=>Math.random()-0.5); }
 

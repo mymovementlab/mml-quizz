@@ -7,7 +7,7 @@ const C = {
 
 const ACCESS_CODE = "mymovementlab2025";
 const FREE_LIMIT = 10;
-const LOGO_URL = "https://raw.githubusercontent.com/mymovementlab/mml-quizz/main/logo.png";
+const LOGO_URL = "https://raw.githubusercontent.com/mymovementlab/mml-quizz/main/logo2.png";
 
 const HISTORY = [
   {id:"h1",type:"mcq",level:"Beginner",topic:"Joseph Pilates",q:"Where was Joseph Pilates born?",options:["Near London, England","Near Düsseldorf, Germany","Near New York, USA","Near Vienna, Austria"],correct:1,explanation:"Joseph Pilates was born near Düsseldorf, Germany in 1883."},

@@ -1816,14 +1816,14 @@ function Quiz({questions,config,onDone,onPaywall,unlocked}){
         </div>
       </div>
       <p style={{fontFamily:"Georgia,serif",fontStyle:"italic",fontSize:"clamp(1rem,2.8vw,1.45rem)",lineHeight:1.45,color:C.forest,marginBottom:22,minHeight:50}}>{q.q}</p>
-      {q.type==="mcq"&&<MCQ q={q} onAnswer={handleAnswer} answered={answered} selected={selected}/>}
-      {q.type==="cue_selection"&&<MCQ q={q} onAnswer={handleAnswer} answered={answered} selected={selected}/>}
-      {q.type==="tf"&&<TF q={q} onAnswer={handleAnswer} answered={answered} selected={selected}/>}
-      {q.type==="flashcard"&&<Flashcard q={q} onAnswer={handleAnswer} answered={answered}/>}
-      {q.type==="fill"&&<Fill q={q} onAnswer={handleAnswer} answered={answered} input={input} setInput={setInput}/>}
-      {q.type==="sequence"&&<Sequence q={q} onAnswer={handleAnswer} answered={answered}/>}
-      {q.type==="error"&&<ErrorDetect q={q} onAnswer={handleAnswer} answered={answered}/>}
-      {q.type==="scenario"&&<Scenario q={q} onAnswer={handleAnswer} answered={answered}/>}
+      {q.type==="mcq"&&<MCQ key={idx} q={q} onAnswer={handleAnswer} answered={answered} selected={selected}/>}
+      {q.type==="cue_selection"&&<MCQ key={idx} q={q} onAnswer={handleAnswer} answered={answered} selected={selected}/>}
+      {q.type==="tf"&&<TF key={idx} q={q} onAnswer={handleAnswer} answered={answered} selected={selected}/>}
+      {q.type==="flashcard"&&<Flashcard key={idx} q={q} onAnswer={handleAnswer} answered={answered}/>}
+     {q.type==="fill"&&<Fill key={idx} q={q} onAnswer={handleAnswer} answered={answered} input={input} setInput={setInput}/>}
+      {q.type==="sequence"&&<Sequence key={idx} q={q} onAnswer={handleAnswer} answered={answered}/>}
+     {q.type==="error"&&<ErrorDetect key={idx} q={q} onAnswer={handleAnswer} answered={answered}/>}
+  {q.type==="scenario"&&<Scenario key={idx} q={q} onAnswer={handleAnswer} answered={answered}/>}
       {answered&&q.explanation&&(
         <div style={{marginTop:16,padding:"12px 15px",borderLeft:`2px solid ${cfg.color}`,background:"rgba(90,110,88,0.04)",fontSize:"0.71rem",lineHeight:1.75,color:C.forest,fontFamily:"sans-serif",fontWeight:300}}>{q.explanation}</div>
       )}
